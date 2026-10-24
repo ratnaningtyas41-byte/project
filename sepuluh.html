@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Adventure Quest: Instruction Island</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            background-attachment: fixed;
+            touch-action: manipulation;
+        }
+        h1, h2, h3, h4, .title-font {
+            font-family: 'Fredoka', sans-serif;
+        }
+        
+        /* Custom Animations */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); }
+            70% { box-shadow: 0 0 15px 10px rgba(251, 191, 36, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+        }
+        .glow-effect {
+            animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .pop-in {
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .shake-error {
+            animation: shake 0.3s ease-in-out;
+        }
+
+        /* Hide scrollbar for cleaner UI but allow scrolling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        
+        .gem-locked { filter: grayscale(100%) opacity(0.5); }
+        .selected-item { border: 3px solid #3b82f6 !important; background-color: #eff6ff; transform: scale(1.02); }
+        .slot-target { border: 2px dashed #94a3b8; transition: all 0.2s; }
+        .slot-target.active { border-color: #3b82f6; background-color: #f0fdf4; }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Top HUD (Heads Up Display) -->
+    <header class="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-40">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <div class="bg-amber-400 text-amber-900 px-3 py-1 rounded-full font-bold text-sm title-font flex items-center shadow-inner">
+                    ⭐ XP: <span id="xp-counter" class="ml-1 text-lg">0</span>
+                </div>
+                <div id="streak-badge" class="hidden bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-bold animate-bounce">
+                    🔥 Streak x<span id="streak-counter">1</span>
+                </div>
+            </div>
+            
+            <!-- Gems Collection -->
+            <div class="flex gap-1 sm:gap-2">
+                <div id="gem-goal" class="text-2xl gem-locked transition-all duration-500" title="Goal Gem">🟢</div>
+                <div id="gem-action" class="text-2xl gem-locked transition-all duration-500" title="Action Gem">🟠</div>
+                <div id="gem-grammar" class="text-2xl gem-locked transition-all duration-500" title="Grammar Gem">🔵</div>
+                <div id="gem-clarity" class="text-2xl gem-locked transition-all duration-500" title="Clarity Gem">🟣</div>
+                <div id="gem-master" class="text-2xl gem-locked transition-all duration-500" title="Master Gem">🟡</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="flex-grow max-w-4xl w-full mx-auto p-4 flex flex-col justify-center relative">
+        
+        <!-- Screen 0: Intro -->
+        <div id="screen-intro" class="bg-white rounded-3xl shadow-xl p-6 sm:p-10 text-center pop-in">
+            <div class="text-6xl mb-4 animate-float">🧭🗺️</div>
+            <h1 class="text-3xl sm:text-4xl font-bold text-emerald-600 mb-2 title-font">English Adventure Quest</h1>
+            <h2 class="text-xl text-slate-500 font-medium mb-6">Instruction Island (Procedure Text)</h2>
+            
+            <!-- Identity Form -->
+            <div class="max-w-md mx-auto mb-6 bg-white p-4 rounded-xl border border-emerald-100 shadow-sm text-left">
+                <div class="mb-4">
+                    <label class="block text-slate-700 font-bold mb-2 text-sm" for="player-name">Explorer Name:</label>
+                    <input class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" id="player-name" type="text" placeholder="Enter your name...">
+                </div>
+                <div class="mb-2">
+                    <label class="block text-slate-700 font-bold mb-2 text-sm" for="player-class">Class / Grade:</label>
+                    <input class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" id="player-class" type="text" placeholder="e.g., X RPL 1">
+                </div>
+            </div>
+
+            <div class="bg-emerald-50 rounded-2xl p-6 mb-8 text-left relative overflow-hidden border border-emerald-100">
+                <div class="absolute -right-4 -bottom-4 text-8xl opacity-10">🌴</div>
+                <div class="flex items-start gap-4">
+                    <div class="bg-white p-2 rounded-full shadow-sm text-4xl">🧑‍🌾</div>
+                    <div>
+                        <p class="font-bold text-emerald-800 text-lg mb-1">Hi, I'm Lexi!</p>
+                        <p class="text-slate-700 leading-relaxed text-sm sm:text-base">
+                            Selamat datang di <b>World of English</b>! Hari ini kita akan menjelajahi <b>Instruction Island</b>. Di pulau ini, kita harus menyelesaikan 4 misi rahasia untuk mengumpulkan 4 <i>Language Gems</i>. Misi kita berhubungan dengan <b>Procedure Text</b>. Are you ready for the adventure?
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="startGame()" class="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white text-xl font-bold py-4 px-10 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95 title-font">
+                Start Quest! 🚀
+            </button>
+        </div>
+
+        <!-- Level Container (Dynamic Content) -->
+        <div id="level-container" class="hidden bg-white rounded-3xl shadow-xl p-4 sm:p-8 w-full relative pop-in">
+            <!-- Level Header -->
+            <div class="flex justify-between items-start mb-6 border-b pb-4">
+                <div>
+                    <span id="level-badge" class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wider mb-2 inline-block">Level 1 (C2)</span>
+                    <h2 id="level-title" class="text-2xl font-bold text-slate-800 title-font">Explorer's Map</h2>
+                </div>
+                <button onclick="useHint()" class="bg-teal-100 hover:bg-teal-200 text-teal-800 px-3 py-2 rounded-xl text-sm font-bold flex items-center transition-colors shadow-sm">
+                    🦜 Hint (-10 XP)
+                </button>
+            </div>
+
+            <!-- Level Instruction -->
+            <div class="bg-slate-50 border-l-4 border-amber-400 p-4 rounded-r-lg mb-6">
+                <p id="level-instruction" class="text-slate-700 font-medium text-sm sm:text-base">
+                    Instruction goes here.
+                </p>
+            </div>
+
+            <!-- Dynamic Level Canvas -->
+            <div id="game-canvas" class="min-h-[300px] mb-8">
+                <!-- Content injected by JS -->
+            </div>
+
+            <!-- Action Button -->
+            <div class="text-center mt-6">
+                <button id="btn-submit" onclick="checkAnswer()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-md transition-all hover:scale-105 active:scale-95 text-lg title-font w-full sm:w-auto">
+                    Check Answer 🔍
+                </button>
+            </div>
+        </div>
+
+        <!-- Screen: Outro -->
+        <div id="screen-outro" class="hidden bg-white rounded-3xl shadow-xl p-6 sm:p-10 text-center pop-in">
+            <!-- Certificate UI -->
+            <div class="border-8 border-double border-amber-300 p-6 sm:p-10 rounded-xl bg-[#fffdf0] relative mb-8">
+                <div class="absolute top-4 left-4 text-4xl opacity-50">🏆</div>
+                <div class="absolute top-4 right-4 text-4xl opacity-50">🎓</div>
+                
+                <h1 class="text-3xl sm:text-4xl font-bold text-slate-800 mb-2 title-font uppercase tracking-widest">Certificate of Achievement</h1>
+                <p class="text-slate-500 mb-6 italic">This is proudly presented to</p>
+                
+                <h2 id="cert-name" class="text-4xl sm:text-5xl font-bold text-emerald-600 mb-2 title-font border-b-2 border-emerald-200 inline-block px-8 pb-2">Student Name</h2>
+                <p id="cert-class" class="text-xl text-slate-600 font-medium mb-8">Class X</p>
+                
+                <p class="text-slate-700 mb-4">For successfully conquering Instruction Island and demonstrating</p>
+                <div id="cert-badge-container" class="bg-amber-100 text-amber-800 font-bold text-2xl sm:text-3xl py-3 px-8 rounded-full inline-block mb-6 shadow-sm border border-amber-200">
+                    <span id="cert-predicate">EXCELLENT</span>
+                </div>
+                <p class="text-slate-700 mb-6">proficiency in Procedure Texts (C2 - C6).</p>
+                
+                <div class="flex justify-center gap-2 mb-6">
+                    <div class="text-3xl">🟢</div>
+                    <div class="text-3xl">🟠</div>
+                    <div class="text-3xl">🔵</div>
+                    <div class="text-3xl">🟣</div>
+                    <div class="text-3xl">🟡</div>
+                </div>
+
+                <div class="flex justify-between items-end mt-8 border-t border-slate-300 pt-4 px-4 sm:px-12">
+                    <div class="text-left">
+                        <p class="font-bold text-slate-800">Lexi</p>
+                        <p class="text-xs text-slate-500">Chief Explorer</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-3xl font-bold text-amber-500 title-font" id="final-xp">0 XP</p>
+                        <p class="text-xs text-slate-500 uppercase tracking-widest">Final Score</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-slate-800">2026</p>
+                        <p class="text-xs text-slate-500">World of English</p>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="location.reload()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95 text-lg">
+                Start New Adventure 🔄
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Custom Modal for Feedback & Hints -->
+    <div id="custom-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-slate-900/50 backdrop-blur-sm px-4">
+        <div id="modal-content" class="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 max-w-sm w-full transform transition-all scale-90 opacity-0">
+            <div id="modal-icon" class="text-5xl mb-4 text-center">✅</div>
+            <h3 id="modal-title" class="text-2xl font-bold text-center mb-2 title-font">Title</h3>
+            <p id="modal-message" class="text-slate-600 text-center mb-6">Message goes here.</p>
+            <button onclick="closeModal()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-4 rounded-xl transition-colors">
+                Continue
+            </button>
+        </div>
+    </div>
+
+    <!-- Game Logic Scripts -->
+    <script>
+        // --- GAME STATE ---
+        const state = {
+            currentLevel: 0, // 0 = intro, 1-5 = levels, 6 = outro
+            playerName: '',
+            playerClass: '',
+            xp: 0,
+            streak: 0,
+            gems: { goal: false, action: false, grammar: false, clarity: false, master: false },
+            selectedItem: null // for tap-to-place mechanic
+        };
+
+        // --- LEVEL CONFIGURATIONS ---
+        const levels = [
+            null, // Index 0 is Intro
+            
+            // Level 1: C2 - Classify (Goal, Materials, Steps)
+            {
+                id: 1,
+                badge: 'Level 1 (C2)',
+                title: 'The Explorer\'s Map',
+                gemIcon: '🟢',
+                gemId: 'goal',
+                instruction: '<b>Tap/Klik</b> sebuah potongan teks di bawah, lalu <b>Tap/Klik</b> kotak kosong yang tepat untuk menyusun struktur Procedure Text (Mengoperasikan Multimeter).',
+                hint: '🦜 "Squawk! Procedure text selalu berurutan: Tujuan (Goal) di awal, lalu alat/bahan (Materials), dan diakhiri dengan cara kerja (Steps).',
+                content: {
+                    type: 'classify',
+                    snippets: [
+                        { id: 's1', text: 'First, turn the dial to DC Voltage. Second, connect the probes.', type: 'steps' },
+                        { id: 's2', text: 'How to operate a digital multimeter.', type: 'goal' },
+                        { id: 's3', text: 'Multimeter device, test probes, battery to test.', type: 'materials' }
+                    ],
+                    targets: [
+                        { id: 't1', label: '1. Goal / Aim', expected: 'goal' },
+                        { id: 't2', label: '2. Materials / Equipment', expected: 'materials' },
+                        { id: 't3', label: '3. Steps / Methods', expected: 'steps' }
+                    ]
+                }
+            },
+
+            // Level 2: C3 - Apply (Action Verbs)
+            {
+                id: 2,
+                badge: 'Level 2 (C3)',
+                title: 'The Action Bridge',
+                gemIcon: '🟠',
+                gemId: 'action',
+                instruction: 'Bantu Lexi melengkapi panduan "How to Use a Fire Extinguisher" (Cara Menggunakan APAR) dengan Action Verbs (Kata Kerja Aksi) yang tepat menggunakan metode PASS.',
+                hint: '🦜 "Squawk! PASS stand for: Pull, Aim, Squeeze, Sweep. Pilih kata kerja sesuai urutan tersebut!"',
+                content: {
+                    type: 'debug',
+                    textContext: 'How to Use a Fire Extinguisher (P.A.S.S)',
+                    sentences: [
+                        { 
+                            prefix: '1. P - ', 
+                            dropdown: { id: 'd_act1', options: ['Push', 'Pull', 'Put'], correct: 'Pull' }, 
+                            suffix: ' the pin on the fire extinguisher to break the tamper seal.'
+                        },
+                        { 
+                            prefix: '2. A - ', 
+                            dropdown: { id: 'd_act2', options: ['Aim', 'Ask', 'Add'], correct: 'Aim' }, 
+                            suffix: ' the nozzle low, pointing at the base of the fire.'
+                        },
+                        { 
+                            prefix: '3. S - ', 
+                            dropdown: { id: 'd_act3', options: ['Slide', 'Shake', 'Squeeze'], correct: 'Squeeze' }, 
+                            suffix: ' the handle to release the extinguishing agent.'
+                        },
+                        { 
+                            prefix: '4. S - ', 
+                            dropdown: { id: 'd_act4', options: ['Sweep', 'Swap', 'Spin'], correct: 'Sweep' }, 
+                            suffix: ' from side to side at the base of the fire until it appears to be out.'
+                        }
+                    ]
+                }
+            },
+
+            // Level 3: C4 - Analyze (Debug Imperative Verbs)
+            {
+                id: 3,
+                badge: 'Level 3 (C4)',
+                title: 'Debug the Cave',
+                gemIcon: '🔵',
+                gemId: 'grammar',
+                instruction: 'Lexi menemukan catatan kuno tentang cara memformat Flash Drive, namun grammar-nya salah! <b>Pilih Verb (Kata Kerja) yang benar</b> pada dropdown agar menjadi Imperative Sentence (kalimat perintah) yang tepat.',
+                hint: '🦜 "Squawk! Imperative sentence selalu menggunakan Verb 1 (Base form) tanpa tambahan -ed, -ing, atau -s. Jangan gunakan kata ganti orang (I/You) di awal langkah!"',
+                content: {
+                    type: 'debug',
+                    textContext: 'How to format a USB Flash Drive',
+                    sentences: [
+                        { 
+                            prefix: '1. ', 
+                            dropdown: { id: 'd1', options: ['Inserted', 'Inserting', 'Insert'], correct: 'Insert' }, 
+                            suffix: ' the flash drive into the computer USB port.'
+                        },
+                        { 
+                            prefix: '2. Open File Explorer and ', 
+                            dropdown: { id: 'd2', options: ['right-clicks', 'right-click', 'right-clicked'], correct: 'right-click' }, 
+                            suffix: ' on the USB drive icon.'
+                        },
+                        { 
+                            prefix: '3. ', 
+                            dropdown: { id: 'd3', options: ['Choosed', 'Choose', 'Choosing'], correct: 'Choose' }, 
+                            suffix: ' "Format" from the drop-down menu.'
+                        },
+                        { 
+                            prefix: '4. Finally, ', 
+                            dropdown: { id: 'd4', options: ['clicks', 'clicked', 'click'], correct: 'click' }, 
+                            suffix: ' "Start" to begin the formatting process.'
+                        }
+                    ]
+                }
+            },
+
+            // Level 4: C5 - Evaluate (Judge two texts)
+            {
+                id: 4,
+                badge: 'Level 4 (C5)',
+                title: 'Judge the Scroll',
+                gemIcon: '🟣',
+                gemId: 'clarity',
+                instruction: 'Sebagai penjelajah bijak, evaluasi 2 teks prosedur ("How to Send a Formal Email") di bawah ini. Pilih teks yang lebih baik, dan centang 2 alasan utama mengapa teks itu lebih baik.',
+                hint: '🦜 "Teks yang baik harus memiliki struktur yang lengkap (Goal, Material, Steps) dan menggunakan urutan waktu (Temporal Conjunctions) seperti First, Next, Finally."',
+                content: {
+                    type: 'evaluate',
+                    texts: [
+                        {
+                            id: 'textA',
+                            title: 'Text A (The Ancient Scroll)',
+                            body: 'Sending formal email. Computer, internet, document. Open email app. Type address. Click attach icon. Hit send button.'
+                        },
+                        {
+                            id: 'textB',
+                            title: 'Text B (The Master Scroll)',
+                            body: '<b>Goal:</b> How to Send a Formal Email with Attachment<br><b>Materials:</b> A computer, internet access, and your document.<br><b>Steps:</b><br>1. First, open your email application.<br>2. Next, type the recipient address and clear subject.<br>3. Then, click the paperclip icon to attach the document.<br>4. Finally, hit the "Send" button.'
+                        }
+                    ],
+                    correctText: 'textB',
+                    reasons: [
+                        { id: 'r1', text: 'Text memiliki Generic Structure (Goal, Materials, Steps) yang lengkap.', correct: true },
+                        { id: 'r2', text: 'Text menggunakan kalimat Pasif (Passive Voice) di seluruh langkah.', correct: false },
+                        { id: 'r3', text: 'Text menggunakan Temporal Conjunctions (First, Next, Finally).', correct: true },
+                        { id: 'r4', text: 'Text lebih pendek sehingga lebih cepat dibaca.', correct: false }
+                    ]
+                }
+            },
+
+            // Level 5: C6 - Create (Build sequence from scratch)
+            {
+                id: 5,
+                badge: 'Level 5 (C6)',
+                title: 'Craft the Treasure',
+                gemIcon: '🟡',
+                gemId: 'master',
+                instruction: 'Ujian Terakhir! Susun ulang kalimat acak di bawah ini menjadi Procedure Text yang utuh (Setting Up Wi-Fi Router). <b>Klik panah atas/bawah</b> untuk memindahkan kalimat ke posisi yang benar.',
+                hint: '🦜 "Ingat strukturnya: 1) Judul/Goal, 2) Alat/Materials, 3) Langkah Pertama (First...), 4) Langkah Selanjutnya (Next...), 5) Langkah Terakhir (Finally...)."',
+                content: {
+                    type: 'create',
+                    blocks: [
+                        { id: 'b1', text: 'Materials: A router device, power cable, and ethernet cable.', order: 2 },
+                        { id: 'b2', text: 'Next, connect the ethernet cable from the modem to the WAN port on the router.', order: 4 },
+                        { id: 'b3', text: 'Finally, connect your computer to the new Wi-Fi network and enter the default password.', order: 5 },
+                        { id: 'b4', text: 'How to Setup a New Wi-Fi Router.', order: 1 },
+                        { id: 'b5', text: 'First, plug the router into a power outlet and turn it on.', order: 3 }
+                    ]
+                }
+            }
+        ];
+
+        // --- CORE FUNCTIONS ---
+
+        function startGame() {
+            const nameInput = document.getElementById('player-name').value.trim();
+            const classInput = document.getElementById('player-class').value.trim();
+            
+            if (!nameInput || !classInput) {
+                showModal('Identity Required!', '📝', 'Silakan isi Explorer Name (Nama) dan Class (Kelas) kamu terlebih dahulu.', false);
+                return;
+            }
+
+            state.playerName = nameInput;
+            state.playerClass = classInput;
+
+            document.getElementById('screen-intro').classList.add('hidden');
+            document.getElementById('level-container').classList.remove('hidden');
+            state.currentLevel = 1;
+            renderLevel();
+        }
+
+        function renderLevel() {
+            if (state.currentLevel > 5) {
+                endGame();
+                return;
+            }
+
+            const lvl = levels[state.currentLevel];
+            document.getElementById('level-badge').textContent = lvl.badge;
+            document.getElementById('level-title').textContent = lvl.title;
+            document.getElementById('level-instruction').innerHTML = lvl.instruction;
+            
+            const canvas = document.getElementById('game-canvas');
+            canvas.innerHTML = ''; // Clear previous
+
+            // State reset for level
+            state.selectedItem = null;
+
+            if (lvl.content.type === 'classify') {
+                renderClassify(canvas, lvl.content);
+            } else if (lvl.content.type === 'debug') {
+                renderDebug(canvas, lvl.content);
+            } else if (lvl.content.type === 'evaluate') {
+                renderEvaluate(canvas, lvl.content);
+            } else if (lvl.content.type === 'create') {
+                renderCreate(canvas, lvl.content);
+            }
+
+            // Animate canvas entry
+            canvas.classList.remove('pop-in');
+            void canvas.offsetWidth; // trigger reflow
+            canvas.classList.add('pop-in');
+        }
+
+        // --- RENDERERS ---
+
+        function renderClassify(container, content) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex flex-col md:flex-row gap-6';
+
+            // Left: Snippets Pool
+            const pool = document.createElement('div');
+            pool.className = 'w-full md:w-1/2 flex flex-col gap-3';
+            pool.innerHTML = `<h3 class="font-bold text-slate-700 mb-2">Text Fragments (Tap to select)</h3>`;
+            
+            // Shuffle snippets visually
+            const shuffledSnippets = [...content.snippets].sort(() => Math.random() - 0.5);
+
+            shuffledSnippets.forEach(snip => {
+                const btn = document.createElement('div');
+                btn.className = 'snippet-item p-4 bg-white border-2 border-slate-200 rounded-xl cursor-pointer hover:border-blue-300 transition-all shadow-sm';
+                btn.textContent = snip.text;
+                btn.dataset.id = snip.id;
+                btn.dataset.type = snip.type;
+                btn.onclick = () => selectClassifyItem(btn);
+                pool.appendChild(btn);
+            });
+
+            // Right: Targets
+            const targets = document.createElement('div');
+            targets.className = 'w-full md:w-1/2 flex flex-col gap-3';
+            targets.innerHTML = `<h3 class="font-bold text-slate-700 mb-2">Procedure Structure (Tap to place)</h3>`;
+
+            content.targets.forEach(tgt => {
+                const dropZone = document.createElement('div');
+                dropZone.className = 'slot-target p-4 rounded-xl min-h-[80px] flex flex-col justify-center cursor-pointer bg-slate-50 relative';
+                dropZone.dataset.expected = tgt.expected;
+                dropZone.innerHTML = `<span class="text-slate-400 font-medium pointer-events-none">${tgt.label}</span>`;
+                dropZone.onclick = () => placeClassifyItem(dropZone);
+                targets.appendChild(dropZone);
+            });
+
+            wrapper.appendChild(pool);
+            wrapper.appendChild(targets);
+            container.appendChild(wrapper);
+        }
+
+        function renderDebug(container, content) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'bg-slate-50 p-6 rounded-2xl border-2 border-slate-200 shadow-inner text-lg leading-loose';
+            
+            let title = document.createElement('h3');
+            title.className = 'font-bold text-xl mb-4 text-center border-b pb-2';
+            title.textContent = content.textContext;
+            wrapper.appendChild(title);
+
+            content.sentences.forEach(sent => {
+                const p = document.createElement('p');
+                p.className = 'mb-3';
+                
+                let selectHtml = `<select id="${sent.dropdown.id}" class="mx-2 bg-white border-2 border-blue-400 rounded-lg px-2 py-1 text-blue-700 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">`;
+                selectHtml += `<option value="" disabled selected>--Fix Verb--</option>`;
+                sent.dropdown.options.forEach(opt => {
+                    selectHtml += `<option value="${opt}">${opt}</option>`;
+                });
+                selectHtml += `</select>`;
+
+                p.innerHTML = `${sent.prefix} ${selectHtml} ${sent.suffix}`;
+                wrapper.appendChild(p);
+            });
+
+            container.appendChild(wrapper);
+        }
+
+        function renderEvaluate(container, content) {
+            const wrapper = document.createElement('div');
+            
+            // Texts Container
+            const textGrid = document.createElement('div');
+            textGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4 mb-6';
+            
+            content.texts.forEach(txt => {
+                const card = document.createElement('div');
+                card.className = 'border-2 border-slate-200 rounded-xl p-4 cursor-pointer hover:border-blue-400 transition-all eval-text-card';
+                card.dataset.id = txt.id;
+                card.onclick = () => {
+                    document.querySelectorAll('.eval-text-card').forEach(c => {
+                        c.classList.remove('border-blue-500', 'bg-blue-50', 'ring-2', 'ring-blue-200');
+                        c.classList.add('border-slate-200');
+                    });
+                    card.classList.remove('border-slate-200');
+                    card.classList.add('border-blue-500', 'bg-blue-50', 'ring-2', 'ring-blue-200');
+                    state.selectedEvaluateText = txt.id;
+                };
+                
+                card.innerHTML = `
+                    <div class="flex items-center gap-2 mb-2 border-b pb-2">
+                        <input type="radio" name="evalText" value="${txt.id}" class="w-5 h-5 pointer-events-none">
+                        <h3 class="font-bold text-lg">${txt.title}</h3>
+                    </div>
+                    <div class="text-sm text-slate-700 font-medium">${txt.body}</div>
+                `;
+                textGrid.appendChild(card);
+            });
+            wrapper.appendChild(textGrid);
+
+            // Reasons Container
+            const reasonsBox = document.createElement('div');
+            reasonsBox.className = 'bg-white p-5 rounded-xl border border-slate-200 shadow-sm';
+            reasonsBox.innerHTML = `<h4 class="font-bold mb-3 text-slate-800">Check 2 reasons why your chosen text is better:</h4>`;
+            
+            content.reasons.forEach(r => {
+                const label = document.createElement('label');
+                label.className = 'flex items-start gap-3 p-3 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-100 mb-2';
+                label.innerHTML = `
+                    <input type="checkbox" value="${r.id}" class="eval-reason-cb w-5 h-5 mt-0.5 text-blue-600 rounded focus:ring-blue-500">
+                    <span class="text-slate-700">${r.text}</span>
+                `;
+                reasonsBox.appendChild(label);
+            });
+            
+            wrapper.appendChild(reasonsBox);
+            container.appendChild(wrapper);
+            state.selectedEvaluateText = null; // reset
+        }
+
+        function renderCreate(container, content) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex flex-col gap-2';
+            wrapper.id = 'sortable-list';
+
+            // Shuffle blocks initially so they are not in order
+            let shuffledBlocks = [...content.blocks].sort(() => Math.random() - 0.5);
+            
+            // Re-render function for the list
+            const renderList = (blocks) => {
+                wrapper.innerHTML = '';
+                blocks.forEach((block, index) => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center gap-3 bg-white p-3 border border-slate-200 rounded-xl shadow-sm transition-all';
+                    row.dataset.id = block.id;
+                    row.dataset.expectedOrder = block.order;
+                    
+                    // Controls
+                    const controls = document.createElement('div');
+                    controls.className = 'flex flex-col gap-1';
+                    
+                    const btnUp = document.createElement('button');
+                    btnUp.innerHTML = '▲';
+                    btnUp.className = `p-1 text-slate-400 hover:text-blue-600 transition-colors ${index === 0 ? 'invisible' : ''}`;
+                    btnUp.onclick = () => moveBlock(blocks, index, -1);
+                    
+                    const btnDown = document.createElement('button');
+                    btnDown.innerHTML = '▼';
+                    btnDown.className = `p-1 text-slate-400 hover:text-blue-600 transition-colors ${index === blocks.length - 1 ? 'invisible' : ''}`;
+                    btnDown.onclick = () => moveBlock(blocks, index, 1);
+                    
+                    controls.appendChild(btnUp);
+                    controls.appendChild(btnDown);
+                    
+                    const num = document.createElement('div');
+                    num.className = 'w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500';
+                    num.textContent = index + 1;
+
+                    const text = document.createElement('div');
+                    text.className = 'flex-grow font-medium text-slate-700';
+                    text.textContent = block.text;
+
+                    row.appendChild(controls);
+                    row.appendChild(num);
+                    row.appendChild(text);
+                    wrapper.appendChild(row);
+                });
+            };
+
+            const moveBlock = (arr, index, offset) => {
+                const newIndex = index + offset;
+                if (newIndex >= 0 && newIndex < arr.length) {
+                    // Swap
+                    [arr[index], arr[newIndex]] = [arr[newIndex], arr[index]];
+                    renderList(arr);
+                }
+            };
+
+            renderList(shuffledBlocks);
+            container.appendChild(wrapper);
+            // Store reference to current array for checking
+            state.currentCreateBlocks = shuffledBlocks;
+        }
+
+        // --- INTERACTION LOGIC (Level 1) ---
+        function selectClassifyItem(el) {
+            // Deselect previous
+            document.querySelectorAll('.snippet-item').forEach(n => n.classList.remove('selected-item'));
+            // Select new
+            el.classList.add('selected-item');
+            state.selectedItem = {
+                element: el,
+                id: el.dataset.id,
+                type: el.dataset.type,
+                text: el.textContent
+            };
+        }
+
+        function placeClassifyItem(targetEl) {
+            if (!state.selectedItem) return;
+            
+            // Visual update
+            targetEl.classList.add('active');
+            targetEl.innerHTML = `
+                <div class="text-xs text-blue-500 font-bold mb-1">${targetEl.dataset.expected.toUpperCase()}</div>
+                <div class="text-sm font-medium text-slate-800">${state.selectedItem.text}</div>
+            `;
+            
+            // Store answer data in target
+            targetEl.dataset.filledType = state.selectedItem.type;
+            
+            // Hide the selected item from pool
+            state.selectedItem.element.style.display = 'none';
+            
+            // Reset selection
+            document.querySelectorAll('.snippet-item').forEach(n => n.classList.remove('selected-item'));
+            state.selectedItem = null;
+        }
+
+        // --- VERIFICATION LOGIC ---
+        function checkAnswer() {
+            const lvl = levels[state.currentLevel];
+            let isCorrect = false;
+            let errorMessage = "Coba periksa lagi jawabanmu.";
+
+            if (lvl.content.type === 'classify') {
+                const targets = document.querySelectorAll('.slot-target');
+                let allFilled = true;
+                let allCorrect = true;
+                
+                targets.forEach(t => {
+                    if (!t.dataset.filledType) allFilled = false;
+                    if (t.dataset.filledType !== t.dataset.expected) allCorrect = false;
+                });
+
+                if (!allFilled) {
+                    showModal('Belum Lengkap!', '⚠️', 'Harap isi semua kotak kosong dengan potongan teks.', false);
+                    return;
+                }
+                
+                if (allCorrect) {
+                    isCorrect = true;
+                } else {
+                    errorMessage = "Struktur teks belum tepat. Ingat: Goal (Tujuan) -> Materials (Alat/Bahan) -> Steps (Langkah).";
+                }
+            } 
+            else if (lvl.content.type === 'debug') {
+                let allCorrect = true;
+                let allFilled = true;
+                lvl.content.sentences.forEach(sent => {
+                    const sel = document.getElementById(sent.dropdown.id);
+                    if (!sel.value) allFilled = false;
+                    if (sel.value !== sent.dropdown.correct) allCorrect = false;
+                });
+
+                if (!allFilled) {
+                    showModal('Belum Lengkap!', '⚠️', 'Pilih kata kerja untuk semua dropdown yang tersedia.', false);
+                    return;
+                }
+                
+                if (allCorrect) isCorrect = true;
+                else errorMessage = "Ada kata kerja (Verb) yang belum tepat. Gunakan Verb 1 asli untuk Imperative sentence (tanpa -s, -ed, -ing).";
+            }
+            else if (lvl.content.type === 'evaluate') {
+                if (!state.selectedEvaluateText) {
+                    showModal('Belum Memilih!', '⚠️', 'Silakan pilih Text A atau Text B terlebih dahulu.', false);
+                    return;
+                }
+
+                const checkboxes = document.querySelectorAll('.eval-reason-cb:checked');
+                if (checkboxes.length !== 2) {
+                    showModal('Pilih Alasan', '⚠️', 'Pilih tepat 2 alasan mengapa teks tersebut lebih baik.', false);
+                    return;
+                }
+
+                let textCorrect = state.selectedEvaluateText === lvl.content.correctText;
+                let reasonsCorrect = true;
+                
+                // Get valid reason IDs
+                const correctReasonIds = lvl.content.reasons.filter(r => r.correct).map(r => r.id);
+                
+                checkboxes.forEach(cb => {
+                    if (!correctReasonIds.includes(cb.value)) reasonsCorrect = false;
+                });
+
+                if (textCorrect && reasonsCorrect) isCorrect = true;
+                else {
+                    if (!textCorrect) errorMessage = "Pilihan teks kurang tepat. Teks B lebih lengkap dan terstruktur.";
+                    else errorMessage = "Teks sudah benar, tapi alasanmu kurang tepat. Cari alasan yang berhubungan dengan Generic Structure dan Conjunctions.";
+                }
+            }
+            else if (lvl.content.type === 'create') {
+                let sortedCorrectly = true;
+                const rows = document.querySelectorAll('#sortable-list > div');
+                rows.forEach((row, index) => {
+                    // index 0 means it should have order 1
+                    if (parseInt(row.dataset.expectedOrder) !== index + 1) {
+                        sortedCorrectly = false;
+                    }
+                });
+
+                if (sortedCorrectly) isCorrect = true;
+                else errorMessage = "Urutannya belum tepat. Perhatikan kata hubung (First, Next, Finally) dan struktur (Goal -> Materials -> Steps).";
+            }
+
+            // Process Result
+            if (isCorrect) {
+                handleCorrectAnswer(lvl);
+            } else {
+                handleWrongAnswer(errorMessage);
+            }
+        }
+
+        function handleCorrectAnswer(lvl) {
+            // Calculate XP
+            let baseXP = 50;
+            state.streak++;
+            let bonusXP = state.streak * 10;
+            let earnedXP = baseXP + bonusXP;
+            state.xp += earnedXP;
+            
+            // Unlock Gem
+            state.gems[lvl.gemId] = true;
+            const gemEl = document.getElementById(`gem-${lvl.gemId}`);
+            gemEl.classList.remove('gem-locked');
+            gemEl.classList.add('glow-effect', 'pop-in');
+
+            // Update UI
+            document.getElementById('xp-counter').textContent = state.xp;
+            const streakBadge = document.getElementById('streak-badge');
+            streakBadge.classList.remove('hidden');
+            document.getElementById('streak-counter').textContent = state.streak;
+
+            // Show Success Modal
+            showModal(
+                'Brilliant! 🌟', 
+                lvl.gemIcon, 
+                `Jawaban benar! Kamu mendapatkan <b>${lvl.gemIcon} ${lvl.gemId.toUpperCase()} GEM</b> dan <b>+${earnedXP} XP</b> (termasuk streak bonus).`, 
+                true, 
+                () => {
+                    state.currentLevel++;
+                    renderLevel();
+                }
+            );
+        }
+
+        function handleWrongAnswer(msg) {
+            state.streak = 0;
+            document.getElementById('streak-badge').classList.add('hidden');
+            document.getElementById('game-canvas').classList.add('shake-error');
+            setTimeout(() => {
+                document.getElementById('game-canvas').classList.remove('shake-error');
+            }, 300);
+
+            showModal('Oops! Hampir Benar', '❌', msg, false);
+        }
+
+        // --- HINT SYSTEM ---
+        function useHint() {
+            if (state.xp >= 10) {
+                state.xp -= 10;
+                document.getElementById('xp-counter').textContent = state.xp;
+                const hintText = levels[state.currentLevel].hint;
+                showModal('Echo says:', '🦜', hintText, false);
+            } else {
+                showModal('XP Tidak Cukup', '🦜', 'Kamu butuh minimal 10 XP untuk menggunakan Hint.', false);
+            }
+        }
+
+        // --- MODAL SYSTEM ---
+        let modalCallback = null;
+        
+        function showModal(title, icon, message, isSuccess, callback = null) {
+            document.getElementById('modal-title').innerHTML = title;
+            document.getElementById('modal-icon').innerHTML = icon;
+            document.getElementById('modal-message').innerHTML = message;
+            
+            document.getElementById('modal-title').className = `text-2xl font-bold text-center mb-2 title-font ${isSuccess ? 'text-emerald-600' : 'text-amber-600'}`;
+            
+            const modal = document.getElementById('custom-modal');
+            const content = document.getElementById('modal-content');
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                content.classList.remove('scale-90', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            }, 10);
+
+            modalCallback = callback;
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('custom-modal');
+            const content = document.getElementById('modal-content');
+            
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-90', 'opacity-0');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                if (modalCallback) {
+                    modalCallback();
+                    modalCallback = null;
+                }
+            }, 200);
+        }
+
+        function endGame() {
+            document.getElementById('level-container').classList.add('hidden');
+            document.getElementById('screen-outro').classList.remove('hidden');
+            
+            // Populate Certificate
+            document.getElementById('cert-name').textContent = state.playerName;
+            document.getElementById('cert-class').textContent = `Class: ${state.playerClass}`;
+            document.getElementById('final-xp').textContent = `${state.xp} XP`;
+            
+            // Determine Predicate based on XP (Max ~400XP for 5 levels with streaks)
+            let predicate = "SATISFACTORY (Cukup)";
+            let colorClass = "text-blue-700";
+            let bgClass = "bg-blue-100 border-blue-200";
+            
+            if (state.xp >= 300) {
+                predicate = "EXCELLENT (Amat Baik)";
+                colorClass = "text-emerald-700";
+                bgClass = "bg-emerald-100 border-emerald-200";
+            } else if (state.xp >= 200) {
+                predicate = "GOOD (Baik)";
+                colorClass = "text-amber-700";
+                bgClass = "bg-amber-100 border-amber-200";
+            }
+            
+            const predicateEl = document.getElementById('cert-predicate');
+            const containerEl = document.getElementById('cert-badge-container');
+            
+            predicateEl.textContent = predicate;
+            containerEl.className = `${bgClass} ${colorClass} font-bold text-xl sm:text-3xl py-3 px-8 rounded-full inline-block mb-6 shadow-sm border`;
+        }
+
+        // Add cloud storage / multiplayer saving offer (simulated as requested by guidelines)
+        function offerCloudSave() {
+             // In a real scenario, this is where we'd initialize Firebase if requested.
+             // Currently operates entirely in-memory per guidelines unless explicitly requested.
+        }
+
+    </script>
+</body>
+</html>
